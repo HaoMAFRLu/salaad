@@ -4,6 +4,8 @@ message: "If you use this software, please cite the associated paper or reposito
 authors:
   - family-names: "Ma"
     given-names: "Hao"
+repository-code: "https://github.com/HaoMAFRLu/salaad"
+abstract: "Research code for training language models with sparse plus low-rank weight decompositions."
+version: "0.1.0"
 date-released: 2026-05-28
 license: MIT
-

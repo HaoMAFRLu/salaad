@@ -1,160 +1,148 @@
-"""Resave the model as HuggingFace format.
-"""
-import os, sys
+"""Resave a trained SALAAD checkpoint in Hugging Face format."""
+import argparse
+import os
+import pickle
+import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from salaad.utils import *
+import numpy as np
+import torch
+import yaml
+from transformers import AutoTokenizer
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from salaad.operators import opt_replace, opt_slr
+from salaad.register import get_model
 from salaad.uia import UIA
-from salaad.operators import *
+from salaad.utils import get_lowspa_layers, load_model, mkdir, set_seed
 
-root = get_parent_path(lvl=1)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def main(MODEL_TYEP: str, 
-         FOLDER: str, 
-         file: str,
-         gamma: float=0.2,
-         params: float=100000000.0,
-         precision: str=torch.bfloat16) -> None:
-    
-    path_folder = os.path.join(root, 'data', FOLDER, MODEL_TYEP, file)
-    path_cfg = os.path.join(path_folder, MODEL_TYEP+'.yaml')
-    path_cfg_model = os.path.join(path_folder, MODEL_TYEP+'_model.json')
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--run_dir", required=True,
+                        help="Directory containing model.pth, config files, and matrix_rank*.pkl files.")
+    parser.add_argument("--cfg_version", default=None,
+                        help="Config stem. Defaults to the single YAML file in run_dir.")
+    parser.add_argument("--output_dir", default=None,
+                        help="Directory for Hugging Face model folders. Defaults to <run_dir>/model_resave.")
+    parser.add_argument("--target_params", type=float, default=None,
+                        help="Target parameter count in millions for the surrogate model.")
+    parser.add_argument("--gamma", type=float, default=0.5,
+                        help="Fraction of compression assigned to the low-rank component.")
+    parser.add_argument("--precision", choices=["float32", "float16", "bfloat16"], default="bfloat16")
+    parser.add_argument("--tokenizer", default="t5-base")
+    parser.add_argument("--skip_surrogate", action="store_true",
+                        help="Only save the vanilla checkpoint.")
+    return parser.parse_args()
 
-    with open(path_cfg) as f:
+
+def infer_cfg_version(run_dir: str) -> str:
+    cfg_candidates = [
+        f[:-5] for f in os.listdir(run_dir)
+        if f.endswith(".yaml")
+    ]
+    if len(cfg_candidates) != 1:
+        raise ValueError(
+            "Could not infer cfg_version from run_dir. Pass --cfg_version explicitly."
+        )
+    return cfg_candidates[0]
+
+
+def parse_precision(name: str):
+    return {
+        "float32": torch.float32,
+        "float16": torch.float16,
+        "bfloat16": torch.bfloat16,
+    }[name]
+
+
+def load_low_sparse_components(run_dir: str, device):
+    LL = {}
+    SS = {}
+    rank_files = sorted(f for f in os.listdir(run_dir) if f.startswith("matrix"))
+    if not rank_files:
+        raise FileNotFoundError(f"No matrix_rank*.pkl files found in {run_dir}")
+
+    for filename in rank_files:
+        LL_part, SS_part = get_lowspa_layers(os.path.join(run_dir, filename))
+        for key in LL_part:
+            if "lm_head" in key:
+                LL[key] = LL_part[key].to(device).t()
+                SS[key] = SS_part[key].to(device).t()
+            else:
+                LL[key] = LL_part[key].to(device)
+                SS[key] = SS_part[key].to(device)
+    return LL, SS
+
+
+def main():
+    args = parse_args()
+    run_dir = os.path.abspath(args.run_dir)
+    cfg_version = args.cfg_version or infer_cfg_version(run_dir)
+    output_dir = args.output_dir or os.path.join(run_dir, "model_resave")
+    precision = parse_precision(args.precision)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    path_cfg = os.path.join(run_dir, f"{cfg_version}.yaml")
+    path_cfg_model = os.path.join(run_dir, f"{cfg_version}_model.json")
+
+    with open(path_cfg, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
-    seed = cfg['seed']
-    max_length = cfg['max_length']
-    batch_size = cfg['batch_size']
-    set_seed(seed)
-    
+    set_seed(cfg["seed"])
+    max_length = cfg["max_length"]
+
     model = get_model(path_cfg_model)
     model.to(precision)
-    
-    load_model(model, os.path.join(path_folder, 'model.pth'))
+    load_model(model, os.path.join(run_dir, "model.pth"))
     model.to(device)
 
-    path_folder_resave = os.path.join(path_folder, 'model_resave')
-    mkdir(path_folder_resave)
+    mkdir(output_dir)
+    vanilla_dir = os.path.join(output_dir, "vanilla")
+    mkdir(vanilla_dir)
+    model.save_pretrained(vanilla_dir, safe_serialization=True)
 
-    path_folder_resave_folder = os.path.join(path_folder_resave, 'vanilla')
-    mkdir(path_folder_resave_folder)
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, model_max_length=max_length)
+    tokenizer.save_pretrained(vanilla_dir)
+    print(f"Vanilla model saved to: {vanilla_dir}")
 
-    model.save_pretrained(path_folder_resave_folder, safe_serialization=True)
+    if args.skip_surrogate:
+        return
 
-    tokenizer = AutoTokenizer.from_pretrained("t5-base", model_max_length=max_length)
-    tokenizer.save_pretrained(path_folder_resave_folder)
+    if args.target_params is None:
+        raise ValueError("--target_params is required unless --skip_surrogate is set.")
 
-    if 'vanilla' not in FOLDER:
-        # if it's not a vanilla model, save two variants
-        LL = {}
-        SS = {}
-        files = os.listdir(path_folder)
-        rank_files = [f for f in files if f.startswith('matrix')]
-        for f in rank_files:
-            LL_part, SS_part = get_lowspa_layers(os.path.join(path_folder, f))
-            for key in LL_part:
-                if 'lm_head' in key:
-                    LL[key] = LL_part[key].to(device).t()
-                    SS[key] = SS_part[key].to(device).t()
-                else:
-                    LL[key] = LL_part[key].to(device)
-                    SS[key] = SS_part[key].to(device)
+    LL, SS = load_low_sparse_components(run_dir, device)
+    with open(os.path.join(run_dir, "layer_info.pkl"), "rb") as f:
+        layer_info = pickle.load(f)
 
-        with open(os.path.join(path_folder, 'layer_info.pkl'), 'rb') as f:
-            layer_info = pickle.load(f)
+    uia = UIA(LL, SS, model, layer_info=layer_info, rate=100000000.0, rank=0)
+    layers = [entry["name"] for entry in cfg["layers"]]
+    gamma = float(np.clip(args.gamma, 0, 1))
 
-        uia = UIA(LL, SS, model, 
-                layer_info=layer_info, 
-                rate=100000000.0,
-                rank=0)
-        
-        layers = [entry['name'] for entry in cfg['layers']]
-        gamma = np.clip(gamma, 0, 1)
+    raw_rank_quantile, raw_rate_density, return_flag = uia.allocate(
+        params_tgt=args.target_params,
+        gamma=gamma,
+    )
+    rank_quantile, rate_density = uia.post_allocate(
+        raw_rank_quantile,
+        raw_rate_density,
+        params_tgt=args.target_params,
+    )
 
-        _rank_quantile, _rate_density, return_flag = uia.allocate(params_tgt=params, gamma=gamma)
-        rank_quantile, rate_density = uia.post_allocate(_rank_quantile, _rate_density, params_tgt=params) 
+    nr_params = uia.check_params(rank_quantile, rate_density)
+    print(f"Surrogate parameters: {nr_params / 1e6:.2f}M")
+    print(f"Target parameters: {args.target_params:.2f}M")
+    print(f"UIA return flag: {return_flag}")
 
-        # double check the allocation
-        nr_params = uia.check_params(rank_quantile, rate_density)
-        print('-' * 50)
-        print(f'Number of parameters: {nr_params/1e6:.2f} Million')
-        print(f'Target parameters: {params:.2f} Million')
-        print(f'State of return flag: {return_flag}')
-        print(f'States:\n'
-            f'0: success\n'
-            f'1: total params less than target\n'
-            f'2: no enought params to reduce in both L and S\n'
-            f'3: no enought params to reduce in L\n'
-            f'4: no enought params to reduce in S')
-        print('-' * 50)
-        
-        XX = opt_slr(LL, SS, rank_quantile, rate_density, layers, device)
-        opt_replace(model, layers, XX, device)  # replace partial layers with low-rank matrices L
+    XX = opt_slr(LL, SS, rank_quantile, rate_density, layers, device)
+    opt_replace(model, layers, XX, device)
 
-        path_folder_resave_folder = os.path.join(path_folder_resave, 'surrogate')
-        mkdir(path_folder_resave_folder)
+    surrogate_dir = os.path.join(output_dir, "surrogate")
+    mkdir(surrogate_dir)
+    model.save_pretrained(surrogate_dir, safe_serialization=True)
+    tokenizer.save_pretrained(surrogate_dir)
+    print(f"Surrogate model saved to: {surrogate_dir}")
 
-        # save the model in HuggingFace format
-        model.save_pretrained(path_folder_resave_folder, safe_serialization=True)
 
-        tokenizer = AutoTokenizer.from_pretrained("t5-base", model_max_length=max_length)
-        tokenizer.save_pretrained(path_folder_resave_folder)
-
-if __name__== '__main__':
-    params_tgt = {
-        'llama_9m':   6.5,
-        'llama_60m':  44.5,
-        'llama_130m': 97.5,
-        'llama_350m': 194.5,
-        'llama_1b':   646.5,
-    }
-    
-    gamma_list = {
-        'llama_9m':   0.5,
-        'llama_60m':  0.7,
-        'llama_130m': 0.6,
-        'llama_350m': 0.6,
-        'llama_1b':   0.8,
-    }
-
-    MODEL_TYPES = [
-                   'llama_9m',
-                   'llama_60m',
-                   'llama_130m',
-                   'llama_350m',
-                   'llama_1b'
-                ]
-    
-    FOLDERS = [
-        'vanilla',
-        'baseline', 
-        'incl_embedding',
-        'head',
-        'baseline_fp32',
-        'head_fp32',
-        'head_bf16',
-        'vanilla_bf16',
-    ]
-
-    FILES = [
-        # '20251229_134048'
-        # '20251130_125959',
-        '20251213_234650', # vanilla bf16 1b
-    ]
-
-    precisin = torch.bfloat16
-
-    for file in FILES:
-        path_part = determine_path_part(MODEL_TYPES=MODEL_TYPES,
-                                        FOLDERS=FOLDERS,
-                                        file=file)
-        MODEL_TYPE = path_part['model_type']
-        FOLDER = path_part['folder']
-        main(MODEL_TYPE, 
-             FOLDER, 
-             file,
-             gamma=gamma_list[MODEL_TYPE],
-             params=params_tgt[MODEL_TYPE],
-             precision=precisin)
+if __name__ == "__main__":
+    main()

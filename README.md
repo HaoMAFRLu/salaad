@@ -62,7 +62,15 @@ export WANDB_ENTITY=...
 
 ## Quickstart
 
-Start with the debug configuration:
+Run the lightweight solver smoke test first:
+
+```bash
+python -m pytest tests/test_smoke.py -q
+```
+
+For real training, start with the debug configuration. This command streams C4
+from Hugging Face and expects a working PyTorch distributed/CUDA setup:
+
 
 ```bash
 torchrun \
@@ -100,14 +108,44 @@ Important fields:
 - `rate_sparsity`: target sparse density for a layer.
 - `rho_dict`, `alpha_dict`, `beta_dict`: ADMM penalty and adaptive threshold settings.
 
-## Evaluation
+## Evaluation Workflow
 
-The repository includes scripts for reconstructing selected layers from saved
-`L` and `S` matrices and for running LM Evaluation Harness tasks after resaving a
-checkpoint in Hugging Face format.
+Evaluate a trained SALAAD run directly from its output directory:
 
-Some evaluation scripts are still experiment-oriented and may need path or task
-edits for new runs.
+```bash
+python scripts/evaluation.py \
+  --run_dir data/debug/llama_debug/<timestamp> \
+  --target_params 6.5
+```
+
+Resave the checkpoint in Hugging Face format:
+
+```bash
+python scripts/resave_model.py \
+  --run_dir data/debug/llama_debug/<timestamp> \
+  --target_params 6.5 \
+  --gamma 0.5
+```
+
+This writes:
+
+```text
+data/debug/llama_debug/<timestamp>/model_resave/vanilla/
+data/debug/llama_debug/<timestamp>/model_resave/surrogate/
+```
+
+Run LM Evaluation Harness on a resaved model:
+
+```bash
+python scripts/run_lm_eval.py \
+  --model_dir data/debug/llama_debug/<timestamp>/model_resave \
+  --variant both \
+  --tasks piqa boolq \
+  --batch_size 8
+```
+
+Use `--variant direct` if `--model_dir` points directly to a Hugging Face model
+folder rather than a directory containing `vanilla/` and `surrogate/`.
 
 ## Notes
 
