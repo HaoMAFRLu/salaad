@@ -11,6 +11,7 @@ data/
 wandb/
 hf_cache/
 models/pretrained/
+paper/
 
 *.pth
 *.bin
@@ -18,4 +19,3 @@ models/pretrained/
 *.log
 *.err
 *.out
-

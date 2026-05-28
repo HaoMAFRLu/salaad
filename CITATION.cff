@@ -1,11 +1,47 @@
 cff-version: 1.2.0
-title: "SALAAD"
+title: "SALAAD: Sparse And Low-Rank Adaptation via ADMM for Large Language Model Inference"
 message: "If you use this software, please cite the associated paper or repository."
 authors:
   - family-names: "Ma"
     given-names: "Hao"
+  - family-names: "Bal"
+    given-names: "Melis Ilayda"
+  - family-names: "Zhang"
+    given-names: "Liang"
+  - family-names: "Li"
+    given-names: "Bingcong"
+  - family-names: "He"
+    given-names: "Niao"
+  - family-names: "Zeilinger"
+    given-names: "Melanie"
+  - family-names: "Muehlebach"
+    given-names: "Michael"
 repository-code: "https://github.com/HaoMAFRLu/salaad"
-abstract: "Research code for training language models with sparse plus low-rank weight decompositions."
+abstract: "Research code for SALAAD, a plug-and-play ADMM framework for inducing sparse plus low-rank structure during language-model pretraining and enabling elastic LLM inference under different memory budgets."
 version: "0.1.0"
 date-released: 2026-05-28
 license: MIT
+preferred-citation:
+  type: conference-paper
+  title: "SALAAD: Sparse And Low-Rank Adaptation via ADMM for Large Language Model Inference"
+  authors:
+    - family-names: "Ma"
+      given-names: "Hao"
+    - family-names: "Bal"
+      given-names: "Melis Ilayda"
+    - family-names: "Zhang"
+      given-names: "Liang"
+    - family-names: "Li"
+      given-names: "Bingcong"
+    - family-names: "He"
+      given-names: "Niao"
+    - family-names: "Zeilinger"
+      given-names: "Melanie"
+    - family-names: "Muehlebach"
+      given-names: "Michael"
+  conference:
+    name: "International Conference on Machine Learning"
+    location: "Seoul, South Korea"
+  collection-title: "Proceedings of Machine Learning Research"
+  collection-volume: "306"
+  year: 2026

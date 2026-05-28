@@ -1,16 +1,28 @@
 # SALAAD
 
-SALAAD is research code for training language models with sparse plus low-rank
-weight decompositions. The current implementation focuses on LLaMA-style causal
-language models and applies an ADMM-style training objective to selected weight
-matrices:
+This repository contains the official implementation of **SALAAD: Sparse And
+Low-Rank Adaptation via ADMM for Large Language Model Inference**. SALAAD is a
+plug-and-play framework for inducing sparse plus low-rank (SLR) structure during
+language-model pretraining, with the goal of supporting elastic deployment under
+different memory and compute budgets.
+
+SALAAD operates in weight space and does not require architectural changes to the
+underlying Transformer model. During training, selected weight matrices are
+coupled to structured surrogate variables through an ADMM-style augmented
+Lagrangian objective:
 
 ```text
 X ~= L + S
 ```
 
 where `X` is the trainable weight, `L` is a low-rank component, and `S` is a
-sparse component.
+sparse component. A single SALAAD-trained checkpoint can then be adapted to a
+continuous range of parameter budgets by adjusting the effective rank and
+sparsity of the learned surrogate weights, without retraining or modifying the
+model architecture.
+
+The code currently focuses on LLaMA-style causal language models and includes
+training, evaluation, Hugging Face export, and LM Evaluation Harness workflows.
 
 ## Repository Layout
 
@@ -152,3 +164,20 @@ folder rather than a directory containing `vanilla/` and `surrogate/`.
 This is research code. Start with `llama_debug`, verify dataset streaming in
 your environment, and avoid committing generated checkpoints or experiment
 outputs.
+
+## Citation
+
+If you use this codebase, please cite:
+
+```bibtex
+@inproceedings{ma2026salaad,
+  title     = {{SALAAD}: Sparse And Low-Rank Adaptation via {ADMM} for Large Language Model Inference},
+  author    = {Ma, Hao and Bal, Melis Ilayda and Zhang, Liang and Li, Bingcong and He, Niao and Zeilinger, Melanie and Muehlebach, Michael},
+  booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {306},
+  year      = {2026},
+  address   = {Seoul, South Korea},
+  publisher = {PMLR}
+}
+```
