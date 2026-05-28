@@ -217,6 +217,16 @@ This is research code. Start with `llama_debug`, verify dataset streaming in
 your environment, and avoid committing generated checkpoints or experiment
 outputs.
 
+## License
+
+This repository is released under the Creative Commons
+Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0). The code is
+available for non-commercial research use. Commercial use is not permitted
+without prior written permission from the copyright holders.
+
+Some files include code adapted from third-party projects under their original
+licenses. See `NOTICE` for attribution details.
+
 ## Citation
 
 If you use this codebase, please cite:

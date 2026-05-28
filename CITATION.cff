@@ -20,7 +20,7 @@ repository-code: "https://github.com/HaoMAFRLu/salaad"
 abstract: "Research code for SALAAD, a plug-and-play ADMM framework for inducing sparse plus low-rank structure during language-model pretraining and enabling elastic LLM inference under different memory budgets."
 version: "0.1.0"
 date-released: 2026-05-28
-license: MIT
+license: CC-BY-NC-4.0
 preferred-citation:
   type: conference-paper
   title: "SALAAD: Sparse And Low-Rank Adaptation via ADMM for Large Language Model Inference"

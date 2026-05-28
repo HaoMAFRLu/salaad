@@ -1,0 +1,6 @@
+SALAAD
+
+This repository contains code adapted from Hugging Face Transformers' LLaMA
+implementation. Those portions retain their original copyright notices and
+Apache License 2.0 headers where applicable.
+
