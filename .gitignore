@@ -12,6 +12,8 @@ wandb/
 hf_cache/
 models/pretrained/
 paper/
+salaad.egg-info/
+history.md
 
 *.pth
 *.bin
