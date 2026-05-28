@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: "SALAAD"
+message: "If you use this software, please cite the associated paper or repository."
+authors:
+  - family-names: "Ma"
+    given-names: "Hao"
+date-released: 2026-05-28
+license: MIT
+

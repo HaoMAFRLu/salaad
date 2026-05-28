@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "salaad"
+version = "0.1.0"
+description = "Research code for training language models with low-rank plus sparse weight decompositions."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Hao Ma" }
+]
+dependencies = [
+  "datasets",
+  "loguru",
+  "numpy",
+  "PyYAML",
+  "tabulate",
+  "tqdm",
+  "transformers>=4.28,<5",
+]
+
+[project.optional-dependencies]
+torch = [
+  "torch",
+]
+eval = [
+  "lm-eval",
+  "safetensors",
+]
+plot = [
+  "matplotlib",
+  "pandas",
+  "seaborn",
+]
+wandb = [
+  "wandb",
+]
+dev = [
+  "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["salaad*", "models*", "dataloaders*"]
