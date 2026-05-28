@@ -171,10 +171,9 @@ If you use this codebase, please cite:
 
 ```bibtex
 @inproceedings{ma2026salaad,
-  title     = {{SALAAD}: Sparse And Low-Rank Adaptation via {ADMM} for Large Language Model Inference},
+  title     = {{SALAAD}: {Sparse And Low-Rank Adaptation via {ADMM} for Large Language Model Inference}},
   author    = {Ma, Hao and Bal, Melis Ilayda and Zhang, Liang and Li, Bingcong and He, Niao and Zeilinger, Melanie and Muehlebach, Michael},
-  booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
-  series    = {Proceedings of Machine Learning Research},
+  booktitle = {Proceedings of the International Conference on Machine Learning},
   volume    = {306},
   year      = {2026},
   address   = {Seoul, South Korea},
