@@ -24,6 +24,58 @@ model architecture.
 The code currently focuses on LLaMA-style causal language models and includes
 training, evaluation, Hugging Face export, and LM Evaluation Harness workflows.
 
+## Method Overview
+
+Let a language model contain selected weight blocks `{X_i}_{i=1}^N`, where each
+block is a linear map in the Transformer, such as attention projections, MLP
+projections, or embeddings. SALAAD introduces a sparse plus low-rank surrogate
+for each selected block:
+
+```text
+X_i = L_i + S_i
+```
+
+where `L_i` captures the dominant low-rank structure and `S_i` captures sparse
+residual variation. For one block, the problem is formulated as:
+
+```text
+min_{X,L,S}  l(X) + alpha ||L||_* + beta ||S||_1
+s.t.        X = L + S
+```
+
+Here `l(X)` is the task loss, `||L||_*` is the nuclear norm surrogate for rank,
+and `||S||_1` is the elementwise L1 surrogate for sparsity. SALAAD solves this
+constrained objective with an ADMM-style procedure. The dense weight `X` is
+updated by standard backpropagation on the coupled loss:
+
+```text
+l_c(X) = l(X) + rho / 2 * ||X - L - S + Y / rho||_F^2
+```
+
+Then the structured variables are recovered with closed-form proximal updates:
+
+```text
+L <- singular-value soft-thresholding of X - S + Y / rho
+S <- elementwise soft-thresholding of X - L + Y / rho
+Y <- Y + rho * (X - L - S)
+```
+
+This produces both the trained dense weights `X` and the structured surrogate
+`X_hat = L + S`. The dense model is not forced to be exactly sparse or low-rank;
+instead, the ADMM penalty keeps it close to a structured surrogate throughout
+training.
+
+SALAAD also uses an I-controller to adapt the block-wise thresholding levels
+`alpha` and `beta` from the observed effective rank of `L` and density of `S`.
+This lets different Transformer blocks acquire different ranks and sparsity
+patterns without manually assigning per-layer schedules.
+
+At deployment time, the learned surrogate can be further compressed with
+Homomorphic Parameter Allocation (HPA): singular values and sparse entries are
+truncated according to a target parameter budget. As a result, one SALAAD
+checkpoint can produce a continuous family of architecture-preserving surrogate
+models without retraining.
+
 ## Repository Layout
 
 ```text
