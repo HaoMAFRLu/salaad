@@ -1,5 +1,9 @@
 # SALAAD
 
+<p align="center">
+  <img src="assets/logo_SALAAD.png" alt="SALAAD logo" width="220">
+</p>
+
 This repository contains the official implementation of **SALAAD: Sparse And
 Low-Rank Adaptation via ADMM for Large Language Model Inference**. SALAAD is a
 plug-and-play framework for inducing sparse plus low-rank (SLR) structure during
