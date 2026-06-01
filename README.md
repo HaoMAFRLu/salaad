@@ -65,8 +65,8 @@ Then the structured variables are recovered with closed-form proximal updates:
 
 $$
 \begin{aligned}
-L &\leftarrow \operatorname{SVT}_{\alpha / \rho}\left(X - S + Y / \rho\right) \\
-S &\leftarrow \operatorname{soft}_{\beta / \rho}\left(X - L + Y / \rho\right) \\
+L &\leftarrow \mathrm{SVT}_{\alpha / \rho}\left(X - S + Y / \rho\right) \\
+S &\leftarrow \mathrm{soft}_{\beta / \rho}\left(X - L + Y / \rho\right) \\
 Y &\leftarrow Y + \rho (X - L - S)
 \end{aligned}
 $$
