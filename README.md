@@ -27,6 +27,14 @@ SALAAD operates in weight space and does not require architectural changes to
 the underlying Transformer model. During training, selected weight matrices are
 coupled to structured surrogate variables through an ADMM-style objective:
 
+## Highlights
+
+- **Pretraining-time compression:** induce sparse-and-low-rank structure during pretraining.
+- **Plug-and-play framework:** compatible with existing training pipelines.
+- **Architecture-agnostic:** compatible with existing foundation models.
+- **Scalable:** adaptive structure control and distributed block-wise updates.
+- **Elastic deployment:** support different memory budgets with one trained checkpoint.
+
 $$
 X \approx L + S
 $$
