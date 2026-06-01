@@ -1,6 +1,16 @@
-<p align="center">
-  <img src="assets/logo_SALAAD.png" alt="SALAAD logo" width="180">
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="30%">
+      <img src="assets/logo_SALAAD.png" alt="SALAAD logo" width="150">
+    </td>
+    <td align="center" width="35%">
+      <img src="assets/elephant.png" alt="Elephant and fridge illustration" width="220">
+    </td>
+    <td align="center" width="35%">
+      <strong>Fit an Elephant into a Fridge</strong>
+    </td>
+  </tr>
+</table>
 
 <h1 align="center">SALAAD</h1>
 
