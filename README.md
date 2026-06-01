@@ -1,29 +1,30 @@
-# SALAAD
-
 <p align="center">
-  <img src="assets/logo_SALAAD.png" alt="SALAAD logo" width="220">
+  <img src="assets/logo_SALAAD.png" alt="SALAAD logo" width="180">
 </p>
 
-This repository contains the official implementation of **SALAAD: Sparse And
-Low-Rank Adaptation via ADMM for Large Language Model Inference**. SALAAD is a
-plug-and-play framework for inducing sparse plus low-rank (SLR) structure during
-language-model pretraining, with the goal of supporting elastic deployment under
-different memory and compute budgets.
+<h1 align="center">SALAAD</h1>
 
-SALAAD operates in weight space and does not require architectural changes to the
-underlying Transformer model. During training, selected weight matrices are
-coupled to structured surrogate variables through an ADMM-style augmented
-Lagrangian objective:
+<p align="center">
+  <strong>Sparse And Low-Rank Adaptation via ADMM for Large Language Model Inference</strong>
+</p>
 
-```text
-X ~= L + S
-```
+<p align="center">
+  Official implementation of SALAAD, a plug-and-play framework for inducing
+  sparse plus low-rank structure during language-model pretraining.
+</p>
 
-where `X` is the trainable weight, `L` is a low-rank component, and `S` is a
-sparse component. A single SALAAD-trained checkpoint can then be adapted to a
+SALAAD operates in weight space and does not require architectural changes to
+the underlying Transformer model. During training, selected weight matrices are
+coupled to structured surrogate variables through an ADMM-style objective:
+
+$$
+X \approx L + S
+$$
+
+Here $X$ is the trainable weight, $L$ is a low-rank component, and $S$ is a
+sparse component. A single SALAAD-trained checkpoint can be adapted to a
 continuous range of parameter budgets by adjusting the effective rank and
-sparsity of the learned surrogate weights, without retraining or modifying the
-model architecture.
+sparsity of the learned surrogate weights.
 
 The code currently focuses on LLaMA-style causal language models and includes
 training, evaluation, Hugging Face export, and LM Evaluation Harness workflows.
@@ -35,37 +36,43 @@ block is a linear map in the Transformer, such as attention projections, MLP
 projections, or embeddings. SALAAD introduces a sparse plus low-rank surrogate
 for each selected block:
 
-```text
+$$
 X_i = L_i + S_i
-```
+$$
 
 where `L_i` captures the dominant low-rank structure and `S_i` captures sparse
 residual variation. For one block, the problem is formulated as:
 
-```text
-min_{X,L,S}  l(X) + alpha ||L||_* + beta ||S||_1
-s.t.        X = L + S
-```
+$$
+\begin{aligned}
+\min_{X,L,S}\quad & \ell(X) + \alpha \lVert L \rVert_* + \beta \lVert S \rVert_1 \\
+\text{s.t.}\quad & X = L + S
+\end{aligned}
+$$
 
-Here `l(X)` is the task loss, `||L||_*` is the nuclear norm surrogate for rank,
-and `||S||_1` is the elementwise L1 surrogate for sparsity. SALAAD solves this
-constrained objective with an ADMM-style procedure. The dense weight `X` is
-updated by standard backpropagation on the coupled loss:
+Here $\ell(X)$ is the task loss, $\lVert L \rVert_*$ is the nuclear norm
+surrogate for rank, and $\lVert S \rVert_1$ is the elementwise L1 surrogate for
+sparsity. SALAAD solves this constrained objective with an ADMM-style procedure.
+The dense weight `X` is updated by standard backpropagation on the coupled loss:
 
-```text
-l_c(X) = l(X) + rho / 2 * ||X - L - S + Y / rho||_F^2
-```
+$$
+\ell_c(X) =
+\ell(X) + \frac{\rho}{2}
+\left\lVert X - L - S + \frac{Y}{\rho} \right\rVert_F^2
+$$
 
 Then the structured variables are recovered with closed-form proximal updates:
 
-```text
-L <- singular-value soft-thresholding of X - S + Y / rho
-S <- elementwise soft-thresholding of X - L + Y / rho
-Y <- Y + rho * (X - L - S)
-```
+$$
+\begin{aligned}
+L &\leftarrow \operatorname{SVT}_{\alpha / \rho}\left(X - S + Y / \rho\right) \\
+S &\leftarrow \operatorname{soft}_{\beta / \rho}\left(X - L + Y / \rho\right) \\
+Y &\leftarrow Y + \rho (X - L - S)
+\end{aligned}
+$$
 
-This produces both the trained dense weights `X` and the structured surrogate
-`X_hat = L + S`. The dense model is not forced to be exactly sparse or low-rank;
+This produces both the trained dense weights $X$ and the structured surrogate
+$\hat{X} = L + S$. The dense model is not forced to be exactly sparse or low-rank;
 instead, the ADMM penalty keeps it close to a structured surrogate throughout
 training.
 
@@ -82,14 +89,14 @@ models without retraining.
 
 ## Repository Layout
 
-```text
-salaad/       Core trainer, ADMM solver, operators, and utilities
-models/       Local LLaMA model implementation
-dataloaders/  Iterable C4/tokenization utilities
-configs/      Small example training and model configs
-scripts/      Training, evaluation, resave, and lm-eval entry points
-tests/        Lightweight smoke tests
-```
+| Path | Purpose |
+| --- | --- |
+| `salaad/` | Core trainer, ADMM solver, operators, and utilities |
+| `models/` | Local LLaMA model implementation |
+| `dataloaders/` | Iterable C4/tokenization utilities |
+| `configs/` | Small example training and model configs |
+| `scripts/` | Training, evaluation, resave, and lm-eval entry points |
+| `tests/` | Lightweight smoke tests |
 
 The main training path is:
 
@@ -138,7 +145,6 @@ python -m pytest tests/test_smoke.py -q
 
 For real training, start with the debug configuration. This command streams C4
 from Hugging Face and expects a working PyTorch distributed/CUDA setup:
-
 
 ```bash
 torchrun \
